@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Hook's Playground</title>
+    <link href="node_modules/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+  
+    <style type="text/css">
+      .output-content {
+        background-color: #FAFAFA;
+        color: #0C1E3F;
+        font-family: monospace;
+        font-size: medium;
+        padding: 10px;
+        width: 500px;
+        height: 300px;
+        overflow: scroll;
+      }
+    </style>
+  
+  </head>
+  <body>
+    <nav class="navbar bg-body-tertiary">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="#">
+          <img src="/resource/logo.png" alt="Logo" width="30" height="24">
+        </a>
+      </div>
+    </nav>
+
+    <div class="container-fluid">
+      <div class="row align-items-start">
+
+        <div class="col">
+
+          <div class="container-fluid">
+            <div class="row" style="margin-top: 1rem; margin-bottom: 1rem">
+              <div class="col font-monospace">
+                Source
+              </div>
+              <div class="col">
+              </div>
+              <div class="col">
+                <select id="sample" class="form-select form-select-sm">
+                  <option selected value="0">Hello, world!</option>
+                  <option value="1">Fibonnaci</option>
+                </select>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col">
+                <div id="source" style="height: 100vh"></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="col">
+
+          <div class="container-fluid">
+            <div class="row" style="margin-top: 1rem; margin-bottom: 1rem">
+              <div class="col font-monospace">
+                Output
+              </div>
+            </div>
+            <div class="row">
+              <div class="col">
+                <div>
+                  <pre id="output" class="output-content" style="height: 100vh; width: 45vw"></pre>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+    <script src="node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="node_modules/monaco-editor/min/vs/loader.js"></script>
+
+    <script>
+      function getTokensProvider() {
+        return {
+          defaultToken: 'invalid',
+
+          keywords: [
+              'as',
+              'break',
+              'continue',
+              'del',
+              'do',
+              'else',
+              'false',
+              'fn',
+              'for',
+              'foreach',
+              'from',
+              'if',
+              'if!',
+              'in',
+              'loop',
+              'match',
+              'mut',
+              'nil',
+              'return',
+              'struct',
+              'true',
+              'use',
+              'val',
+              'while',
+              'while!',
+          ],
+
+          typeKeywords: [],
+
+          operators: [
+              '..',
+              '.',
+              '|=',
+              '||',
+              '|',
+              '^=',
+              '^',
+              '&=',
+              '&&',
+              '&',
+              '=>',
+              '==',
+              '=',
+              '!=',
+              '!',
+              '>=',
+              '>>=',
+              '>>',
+              '>',
+              '<=',
+              '<<=',
+              '<<',
+              '<',
+              '+=',
+              '++',
+              '+',
+              '-=',
+              '--',
+              '-',
+              '*=',
+              '*',
+              '/=',
+              '/',
+              '~/=',
+              '~/',
+              '~',
+              '%=',
+              '%',
+          ],
+
+          symbols: /[=><!~?:&|+\-*/^%]+/,
+
+          escapes: /\\(?:[abfnrtv\\"']|x[0-9A-Fa-f]{1,4}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8})/,
+
+          tokenizer: {
+              root: [
+                  // identifiers and keywords
+                  [
+                      /[a-z_$][\w$]*/,
+                      {
+                          cases: {
+                              '@typeKeywords': 'keyword',
+                              '@keywords': 'keyword',
+                              '@default': 'identifier',
+                          },
+                      },
+                  ],
+
+                  [/[A-Z][\w$]*/, 'type.identifier'], // to show class names nicely
+
+                  // whitespace
+                  {include: '@whitespace'},
+
+                  // delimiters and operators
+                  [/[{}()[\]]/, '@brackets'],
+                  [/[<>](?!@symbols)/, '@brackets'],
+                  [
+                      /@symbols/,
+                      {
+                          cases: {
+                              '@operators': 'operator',
+                              '@default': '',
+                          },
+                      },
+                  ],
+
+                  // numbers
+                  [/\d*\.\d+([eE][-+]?\d+)?[fFdD]?/, 'number.float'],
+                  [/0[xX][0-9a-fA-F_]*[0-9a-fA-F][Ll]?/, 'number.hex'],
+                  [/0o[0-7_]*[0-7][Ll]?/, 'number.octal'],
+                  [/0[bB][0-1_]*[0-1][Ll]?/, 'number.binary'],
+                  [/\d+/, 'number'],
+
+                  // delimiter: after number because of .\d floats
+                  [/[;,.]/, 'delimiter'],
+
+                  // strings
+                  [/"([^"\\]|\\.)*$/, 'string.invalid'], // non-teminated string
+                  [/c?\\\\.*$/, 'string'],
+                  [/c?"/, 'string', '@string'],
+
+                  // characters
+                  [/'[^\\']'/, 'string'],
+                  [/(')(@escapes)(')/, ['string', 'string.escape', 'string']],
+                  [/'/, 'string.invalid'],
+              ],
+
+              whitespace: [
+                  [/[ \r\n]+/, 'white'],
+                  [/\/\*/, 'comment', '@comment'],
+                  [/\/\+/, 'comment', '@comment'],
+                  [/\/\/.*$/, 'comment'],
+                  [/\t/, 'comment.invalid'],
+              ],
+
+              comment: [
+                  [/[^/*]+/, 'comment'],
+                  [/\/\*/, 'comment.invalid'],
+                  [/[/*]/, 'comment'],
+              ],
+
+              string: [
+                  [/[^\\"]+/, 'string'],
+                  [/@escapes/, 'string.escape'],
+                  [/\\./, 'string.escape.invalid'],
+                  [/"/, 'string', '@pop'],
+              ],
+          },
+        };
+      }
+
+      function getDefaultExample() {
+        return "println(\"Hello, world!\");";
+      }
+
+      function prepareRequestBody(source) {
+        return {
+          source: source,
+          options: {
+            userArguments: "",
+            compilerOptions: {
+              skipAsm: true
+            },
+            filters: {
+              binaryObject: false,
+              binary: false,
+              execute: true,
+              intel: true,
+              demangle: true,
+              labels: false,
+              directives: false,
+              commentOnly: false,
+              trim: false
+            },
+            tools: [
+            ],
+            libraries: [
+            ]
+          },
+          lang: "hook",
+          files: [
+          ],
+          bypassCache: false,
+          allowStoreCodeDebug: true
+        };
+      }
+
+      function handleResponseBody(data) {
+        const execResult = data.execResult;
+        const out = execResult.code == 0 ? execResult.stdout : execResult.stderr;
+        let text = "";
+        for (let i = 0; i < out.length; i++) {
+          const line = out[i];
+          text += `${line.text}\r\n`;
+        }
+        return text;
+      }
+
+      function doRequest(body, callback) {
+        const url = "https://godbolt.org/api/compiler/hook010/compile";
+        fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          body: JSON.stringify(body)
+        })
+          .then(response => response.json())
+          .then(data => callback(data))
+          .catch(error => console.error(error));
+      }
+
+      function evalutate(source) {
+        const body = prepareRequestBody(source);
+        doRequest(body, function(data) {
+          const text = handleResponseBody(data);
+          const output = document.getElementById("output");
+          output.innerHTML = text;
+        });
+      }
+
+      require.config({
+        paths: {
+          vs: "node_modules/monaco-editor/min/vs"
+        }
+      });
+
+      require(["vs/editor/editor.main"], function () {
+
+        monaco.languages.register({ id: "hook" });
+        monaco.languages.setMonarchTokensProvider("hook", getTokensProvider());
+
+        var editor = monaco.editor.create(document.getElementById("source"), {
+          language: "hook"
+        });
+
+
+        editor.onDidChangeModelContent(function() {
+          evalutate(editor.getValue());
+        });
+
+        editor.setValue(getDefaultExample());
+
+      });
+    </script>
+  </body>
+</html>
