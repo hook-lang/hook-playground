@@ -1,6 +1,7 @@
 
 function getSamples() {
   let samples = [];
+  samples.push("\/\/ Type your code here, or load a sample.\n");
   samples.push("\/\/ Binary search\n"
     + "\n"
     + "fn binary_search(arr, key) {\n"

@@ -40,27 +40,23 @@
 
           <div class="container-fluid">
             <div class="row" style="margin-top: 1rem; margin-bottom: 1rem">
-              <div class="col font-monospace">
-                Source
-              </div>
               <div class="col">
-              </div>
-              <div class="col">
-                <div class="dropdown text-end">
-                  <button id="samples" class="btn text-bg-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    Samples
+                <div class="dropdown text-begin">
+                  <button class="btn text-bg-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Source
                   </button>
                   <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#" onclick="selectSample(0)">Binary search</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="selectSample(1)">Factorial</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="selectSample(2)">Fibonnaci</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="selectSample(3)">Fizz buzz</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="selectSample(4)">Hello, world!</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="selectSample(5)">Knuth shuffle</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="selectSample(6)">Mandelbrot set</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="selectSample(7)">Quicksort</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="selectSample(8)">Rule 110</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="selectSample(9)">Tower of Hanoi</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="loadSample(0)">Blank</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="loadSample(1)">Binary search</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="loadSample(2)">Factorial</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="loadSample(3)">Fibonnaci</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="loadSample(4)">Fizz buzz</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="loadSample(5)">Hello, world!</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="loadSample(6)">Knuth shuffle</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="loadSample(7)">Mandelbrot set</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="loadSample(8)">Quicksort</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="loadSample(9)">Rule 110</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="loadSample(10)">Tower of Hanoi</a></li>
                   </ul>
                 </div>
               </div>
@@ -78,8 +74,16 @@
 
           <div class="container-fluid">
             <div class="row" style="margin-top: 1rem; margin-bottom: 1rem">
-              <div class="col font-monospace">
-                Output
+              <div class="col">
+                <div class="dropdown text-begin">
+                  <button id="output-type" class="btn text-bg-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Output
+                  </button>
+                  <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" onclick="selectOutputType(0)">Output</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="selectOutputType(1)">Bytecode</a></li>
+                  </ul>
+                </div>
               </div>
             </div>
             <div class="row">
@@ -104,7 +108,19 @@
     <script>
 
       var samples = getSamples();
-      var selectSample;
+      var loadSample;
+
+      var asmText = "";
+      var resultText = "";
+      var outputType = 0;
+
+      function selectOutputType(type) {
+        outputType = type;
+        const outputTypeElem = document.getElementById("output-type");
+        outputTypeElem.innerHTML = outputType == 0 ? "Output" : "Bytecode";
+        const outputElem = document.getElementById("output");
+        outputElem.innerHTML = outputType == 0 ? resultText : asmText;
+      }
 
       function prepareRequestBody(source) {
         return {
@@ -112,7 +128,7 @@
           options: {
             userArguments: "",
             compilerOptions: {
-              skipAsm: true
+              skipAsm: false
             },
             filters: {
               binaryObject: false,
@@ -139,14 +155,19 @@
       }
 
       function handleResponseBody(data) {
+        const asm = data.asm;
+        asmText = "";
+        for (let i = 0; i < asm.length; i++) {
+          const elem = asm[i];
+          asmText += `${elem.text}\n`;
+        }
         const execResult = data.execResult;
         const out = execResult.code == 0 ? execResult.stdout : execResult.stderr;
-        let text = "";
+        resultText = "";
         for (let i = 0; i < out.length; i++) {
-          const line = out[i];
-          text += `${line.text}\n`;
+          const elem = out[i];
+          resultText += `${elem.text}\n`;
         }
-        return text;
       }
 
       function doRequest(body, callback) {
@@ -167,9 +188,9 @@
       function evalutate(source) {
         const body = prepareRequestBody(source);
         doRequest(body, function(data) {
-          const text = handleResponseBody(data);
-          const output = document.getElementById("output");
-          output.innerHTML = text;
+          handleResponseBody(data);
+          const outputElem = document.getElementById("output");
+          outputElem.innerHTML = outputType == 0 ? resultText : asmText;
         });
       }
 
@@ -184,7 +205,8 @@
         monaco.languages.register({ id: "hook" });
         monaco.languages.setMonarchTokensProvider("hook", getTokensProvider());
 
-        var editor = monaco.editor.create(document.getElementById("source"), {
+        let sourceElem = document.getElementById("source");
+        var editor = monaco.editor.create(sourceElem, {
           language: "hook"
         });
 
@@ -192,13 +214,13 @@
           evalutate(editor.getValue());
         });
 
-        selectSample = function (index) {
+        loadSample = function (index) {
           const sample = samples[index];
           editor.setValue(sample);
         }
 
         function getDefaultSample() {
-          return samples[4];
+          return samples[5];
         }
 
         editor.setValue(getDefaultSample());
