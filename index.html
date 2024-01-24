@@ -162,7 +162,7 @@
           asmText += `${elem.text}\n`;
         }
         const execResult = data.execResult;
-        const out = execResult.code == 0 ? execResult.stdout : execResult.stderr;
+        const out = data.code == 0 ? execResult.stdout : data.stderr;
         resultText = "";
         for (let i = 0; i < out.length; i++) {
           const elem = out[i];
